@@ -99,28 +99,27 @@ def learn_topic(request: TopicRequest):
 
     lang_instruction = "Respond entirely in Malayalam (using Malayalam script, not Manglish)" if request.language == "ml" else "Respond in English"
 
-    structure_note = (
-        "Each example must be under 100 words. Do not repeat the same point across examples."
+    example_length_note = (
+        "Each example should be 80-120 words."
         if request.language == "ml"
-        else "Each example must be 4-6 sentences long, include a short code snippet or precise technical detail, and explain WHY this approach was chosen over alternatives."
+        else "Each example should be 100-150 words."
     )
 
-    main_prompt = f"""You are an expert teacher explaining the SOFTWARE PROGRAMMING concept "{request.topic}" to a software developer preparing for job interviews in Kerala, India. This is strictly about programming/computer science, not any other meaning of the word.
+    main_prompt = f"""You are an expert teacher explaining the SOFTWARE PROGRAMMING concept "{request.topic}" to a developer preparing for interviews in Kerala, India.
 
-Topic: "{request.topic}"
-IMPORTANT: Explain specifically about the programming concept "{request.topic}" only, do not substitute a different topic or a non-programming meaning of the word.
+CRITICAL RULE: The topic you must explain is EXACTLY "{request.topic}". Ignore any other topic mentioned in the context below — the context is only background, and if it discusses a DIFFERENT concept than "{request.topic}", you must NOT explain that different concept. Your entire response must be about "{request.topic}" only.
 
-Relevant context from the student's past learning (use if helpful, ignore if irrelevant):
+Background context from the student's past learning (use ONLY if it is actually about "{request.topic}"; otherwise ignore it completely):
 {context_text}
 
 {lang_instruction}.
 
-Structure your response as follows:
-1. A clear explanation (2 paragraphs, each under 80 words) covering what it is, why it exists, and how it works internally.
-2. Exactly 3 real-world examples, each using a DIFFERENT company/product type (e.g. fintech, e-commerce, food delivery — do not repeat the same industry twice). {structure_note}
+Structure your response about "{request.topic}" as follows:
+1. Start with ONE memorable real-world analogy (2-3 sentences) that makes the core idea click immediately — like explaining an API using a restaurant waiter who takes your order to the kitchen and brings back the food, so you never deal with the kitchen directly. Pick an analogy from everyday life in Kerala/India that fits "{request.topic}".
+2. A clear technical explanation (1-2 paragraphs) of what "{request.topic}" is, why it exists, and how it works internally.
+3. Exactly 2 detailed real-world examples, each using a DIFFERENT company/product type. {example_length_note} Each example must describe a specific scenario, include a short code snippet, and explain WHY this approach was chosen.
 
-Be specific, avoid repeating the same sentence or point more than once. Do NOT include any interview question in this response — that will be asked separately."""
-
+Do NOT include any interview question in this response — that will be asked separately."""
     main_max_tok = 5000 if request.language == "ml" else 3000
 
     main_response = client.chat.completions.create(
