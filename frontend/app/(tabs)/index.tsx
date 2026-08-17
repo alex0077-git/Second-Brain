@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { API_URL } from '../config';
+import { API_URL } from '../../config';
 import { StyleSheet, TextInput, Button, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';

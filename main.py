@@ -53,6 +53,15 @@ def init_db():
 init_db()
 
 
+def make_summary(explanation: str) -> str:
+    clean = explanation.split("---")[0].strip()
+    if len(clean) <= 150:
+        return clean
+    truncated = clean[:150]
+    last_space = truncated.rfind(" ")
+    return truncated[:last_space] + "..."
+
+
 class TopicRequest(BaseModel):
     topic: str
     language: str
@@ -64,6 +73,11 @@ class ReviewResult(BaseModel):
     result: str  # "easy" or "hard"
 
 
+class QuizRequest(BaseModel):
+    topics: list[str]
+    language: str
+
+
 @app.get("/")
 def read_root():
     return {"message": "Second Brain backend is alive"}
@@ -71,6 +85,7 @@ def read_root():
 
 @app.post("/learn")
 def learn_topic(request: TopicRequest):
+    request.topic = request.topic.strip()
     note_id = f"note_{request.topic.lower().replace(' ', '_')}"
     folder_clean = request.folder.strip().title()
 
@@ -82,10 +97,6 @@ def learn_topic(request: TopicRequest):
     context_snippets = past_notes["documents"][0] if past_notes["documents"] else []
     context_text = "\n".join(context_snippets) if context_snippets else "No previous notes yet."
 
-    # DEBUG — context verify cheyyan
-    print(f"DEBUG context_text length: {len(context_text)}")
-    print(f"DEBUG context_text: {context_text[:300]}")
-
     lang_instruction = "Respond entirely in Malayalam (using Malayalam script, not Manglish)" if request.language == "ml" else "Respond in English"
 
     structure_note = (
@@ -94,7 +105,6 @@ def learn_topic(request: TopicRequest):
         else "Each example must be 4-6 sentences long, include a short code snippet or precise technical detail, and explain WHY this approach was chosen over alternatives."
     )
 
-    # Call 1 — explanation + 3 examples (interview question EXCLUDED, separate call)
     main_prompt = f"""You are an expert teacher explaining the SOFTWARE PROGRAMMING concept "{request.topic}" to a software developer preparing for job interviews in Kerala, India. This is strictly about programming/computer science, not any other meaning of the word.
 
 Topic: "{request.topic}"
@@ -120,7 +130,6 @@ Be specific, avoid repeating the same sentence or point more than once. Do NOT i
     )
     main_content = main_response.choices[0].message.content
 
-    # Call 2 — interview question, completely separate request
     interview_prompt = f"""{lang_instruction}. This is about the SOFTWARE PROGRAMMING concept of "{request.topic}" (not any other meaning of this word — strictly computer science / coding context). Give exactly ONE common technical interview question about the programming concept "{request.topic}", followed by a strong, concise sample answer (3-5 sentences). Format it as:
 
 Question: ...
@@ -228,10 +237,10 @@ def get_today_learned():
     conn = sqlite3.connect("reviews.db")
     cursor = conn.cursor()
     today = datetime.now().strftime("%Y-%m-%d")
-    cursor.execute("SELECT topic, folder FROM notes WHERE created_at = ?", (today,))
+    cursor.execute("SELECT topic, folder, explanation FROM notes WHERE created_at = ?", (today,))
     rows = cursor.fetchall()
     conn.close()
-    return {"topics": [{"topic": r[0], "folder": r[1]} for r in rows]}
+    return {"topics": [{"topic": r[0], "folder": r[1], "summary": make_summary(r[2])} for r in rows]}
 
 
 @app.get("/review/all")
@@ -252,15 +261,10 @@ def get_all_for_review():
 def get_folder_topics(folder: str):
     conn = sqlite3.connect("reviews.db")
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT r.topic, r.next_review_date, r.interval_days, n.folder
-        FROM review_schedule r JOIN notes n ON r.topic = n.topic
-        WHERE n.folder = ?
-        ORDER BY r.topic
-    """, (folder,))
+    cursor.execute("SELECT topic, folder, explanation FROM notes WHERE folder = ? ORDER BY topic", (folder,))
     rows = cursor.fetchall()
     conn.close()
-    return {"topics": [{"topic": r[0], "next_review_date": r[1], "interval_days": r[2], "folder": r[3]} for r in rows]}
+    return {"topics": [{"topic": r[0], "folder": r[1], "summary": make_summary(r[2])} for r in rows]}
 
 
 @app.post("/review/submit")
@@ -279,3 +283,51 @@ def submit_review(request: ReviewResult):
     conn.commit()
     conn.close()
     return {"topic": request.topic, "new_interval_days": new_interval, "next_review_date": next_date}
+
+
+@app.post("/quiz/generate")
+def generate_quiz(request: QuizRequest):
+    conn = sqlite3.connect("reviews.db")
+    cursor = conn.cursor()
+    quiz_items = []
+
+    lang_instruction = "Respond entirely in Malayalam (using Malayalam script)" if request.language == "ml" else "Respond in English"
+
+    for topic in request.topics:
+        cursor.execute("SELECT explanation FROM notes WHERE topic = ?", (topic.lower(),))
+        row = cursor.fetchone()
+        if not row:
+            continue
+        existing_explanation = row[0][:800]
+
+        prompt = f"""You are conducting a mock technical interview about the programming concept "{topic}".
+
+The student has already studied this content:
+{existing_explanation}
+
+{lang_instruction}. Generate ONE NEW interview-style question about "{topic}" that tests deeper or different understanding than what's shown above — do not repeat the same question or angle. Then give a strong, concise model answer (3-4 sentences).
+
+Format exactly as:
+QUESTION: <question text>
+ANSWER: <answer text>"""
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+        )
+        content = response.choices[0].message.content
+
+        question, answer = "", ""
+        if "QUESTION:" in content and "ANSWER:" in content:
+            parts = content.split("ANSWER:")
+            question = parts[0].replace("QUESTION:", "").strip()
+            answer = parts[1].strip()
+        else:
+            question = content
+            answer = "Answer generation failed, please retry."
+
+        quiz_items.append({"topic": topic, "question": question, "answer": answer})
+
+    conn.close()
+    return {"quiz": quiz_items}
