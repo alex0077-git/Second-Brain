@@ -123,7 +123,7 @@ Do NOT include any interview question in this response — that will be asked se
     main_max_tok = 5000 if request.language == "ml" else 3000
 
     main_response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": main_prompt}],
         max_tokens=main_max_tok,
     )
@@ -135,7 +135,7 @@ Question: ...
 Answer: ..."""
 
     interview_response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": interview_prompt}],
         max_tokens=1200,
     )
@@ -311,7 +311,7 @@ QUESTION: <question text>
 ANSWER: <answer text>"""
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=800,
         )

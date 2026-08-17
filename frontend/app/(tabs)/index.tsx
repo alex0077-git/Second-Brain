@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { API_URL } from '../../config';
-import { StyleSheet, TextInput, Button, ScrollView, ActivityIndicator } from 'react-native';
+import { colors, spacing, radius } from '../../app-colors';
+import { AppButton } from '../../components/AppButton';
+import { StyleSheet, TextInput, ScrollView, ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 
 export default function HomeScreen() {
   const [topic, setTopic] = useState('');
@@ -41,71 +41,113 @@ export default function HomeScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedText type="title">Learn</ThemedText>
+          <Text style={styles.eyebrow}>SECOND BRAIN</Text>
+          <Text style={styles.title}>Learn something new</Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Topic (e.g. decorators)"
-            placeholderTextColor="#888"
+            placeholder="Topic — e.g. decorators"
+            placeholderTextColor={colors.textMuted}
             value={topic}
             onChangeText={setTopic}
           />
 
           <TextInput
             style={styles.input}
-            placeholder="Folder (e.g. Python, DSA)"
-            placeholderTextColor="#888"
+            placeholder="Folder — e.g. Python, DSA"
+            placeholderTextColor={colors.textMuted}
             value={folder}
             onChangeText={setFolder}
           />
 
-          <ThemedView style={styles.langRow}>
-            <Button
+          <View style={styles.langRow}>
+            <AppButton
               title="English"
-              color={language === 'english' ? 'blue' : 'gray'}
+              variant={language === 'english' ? 'primary' : 'outline'}
               onPress={() => setLanguage('english')}
+              style={styles.langButton}
             />
-            <Button
+            <AppButton
               title="മലയാളം"
-              color={language === 'ml' ? 'blue' : 'gray'}
+              variant={language === 'ml' ? 'primary' : 'outline'}
               onPress={() => setLanguage('ml')}
+              style={styles.langButton}
             />
-          </ThemedView>
+          </View>
 
-          <Button title="Learn" onPress={handleLearn} disabled={loading} />
+          <AppButton title="Learn" onPress={handleLearn} disabled={loading} />
 
-          {loading && <ActivityIndicator size="large" />}
+          {loading && <ActivityIndicator size="large" color={colors.accent} style={styles.loader} />}
 
           {explanation !== '' && !loading && (
-            <ThemedView style={styles.resultBox}>
-              <ThemedText>{explanation}</ThemedText>
-              <Button title="Learn another topic" onPress={handleReset} />
-              <ThemedText type="small">
-                Saved to "{folder}". Go to the Revise tab anytime to review it.
-              </ThemedText>
-            </ThemedView>
+            <View style={styles.resultCard}>
+              <Text style={styles.folderTag}>{folder || 'Note'}</Text>
+              <Text style={styles.explanationText}>{explanation}</Text>
+              <AppButton title="Learn another topic" onPress={handleReset} variant="outline" style={styles.resetButton} />
+            </View>
           )}
         </ScrollView>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: colors.background },
   safeArea: { flex: 1 },
-  scrollContent: { padding: 20, gap: 12 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    color: '#000',
-    backgroundColor: '#fff',
+  scrollContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl * 2 },
+  eyebrow: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
-  langRow: { flexDirection: 'row', gap: 8 },
-  resultBox: { gap: 8, paddingBottom: 40 },
+  title: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: spacing.sm,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    fontSize: 16,
+  },
+  langRow: { flexDirection: 'row', gap: spacing.sm },
+  langButton: { flex: 1 },
+  loader: { marginTop: spacing.md },
+  resultCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    gap: spacing.md,
+  },
+  folderTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.tag,
+    color: colors.accentText,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    textTransform: 'uppercase',
+  },
+  explanationText: {
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 23,
+  },
+  resetButton: { marginTop: spacing.sm },
 });

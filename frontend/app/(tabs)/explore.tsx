@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { API_URL } from '../../config';
-import { StyleSheet, Button, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import { colors, spacing, radius } from '../../app-colors';
+import { AppButton } from '../../components/AppButton';
+import { StyleSheet, ScrollView, ActivityIndicator, View, Text, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 
 type TopicItem = { topic: string; folder: string; summary: string };
 type QuizItem = { topic: string; question: string; answer: string };
@@ -93,108 +93,110 @@ export default function ReviseScreen() {
 
   if (stage === 'menu') {
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <ThemedText type="title">Revise</ThemedText>
-            <ThemedView style={styles.menuButton}>
-              <Button title="What I learned today" onPress={loadToday} disabled={loading} />
-            </ThemedView>
-            <ThemedView style={styles.menuButton}>
-              <Button title="Revise by folder" onPress={loadFolders} disabled={loading} />
-            </ThemedView>
-            {loading && <ActivityIndicator size="large" />}
+            <Text style={styles.eyebrow}>REVISE</Text>
+            <Text style={styles.title}>What do you want to revise?</Text>
+
+            <AppButton title="What I learned today" onPress={loadToday} disabled={loading} style={styles.menuButton} />
+            <AppButton title="Revise by folder" onPress={loadFolders} disabled={loading} variant="outline" style={styles.menuButton} />
+
+            {loading && <ActivityIndicator size="large" color={colors.accent} style={styles.loader} />}
           </ScrollView>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
   if (stage === 'folderPick') {
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Button title="← Back" onPress={backToMenu} />
-            <ThemedText type="title">Select a folder</ThemedText>
-            {folders.length === 0 && <ThemedText>No folders yet. Learn something first!</ThemedText>}
+            <AppButton title="← Back" onPress={backToMenu} variant="outline" style={styles.backButton} />
+            <Text style={styles.title}>Select a folder</Text>
+
+            {folders.length === 0 && <Text style={styles.emptyText}>No folders yet. Learn something first!</Text>}
+
             {folders.map((f) => (
-              <ThemedView key={f} style={styles.card}>
-                <Button title={f} onPress={() => loadFolderTopics(f)} />
-              </ThemedView>
+              <View key={f} style={styles.folderCard}>
+                <Text style={styles.folderCardText}>{f}</Text>
+                <AppButton title="Open" onPress={() => loadFolderTopics(f)} style={styles.folderOpenButton} />
+              </View>
             ))}
           </ScrollView>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
   if (stage === 'list') {
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Button title="← Back" onPress={backToMenu} />
-            <ThemedText type="title">Topics</ThemedText>
+            <AppButton title="← Back" onPress={backToMenu} variant="outline" style={styles.backButton} />
+            <Text style={styles.title}>Topics</Text>
 
-            {items.length === 0 && <ThemedText>Nothing here yet.</ThemedText>}
+            {items.length === 0 && <Text style={styles.emptyText}>Nothing here yet.</Text>}
 
             {items.map((item) => (
-              <ThemedView key={item.topic} style={styles.card}>
-                <ThemedText type="defaultSemiBold">{item.topic}</ThemedText>
-                <ThemedText type="small">{item.folder}</ThemedText>
-                <ThemedText>{item.summary}</ThemedText>
-              </ThemedView>
+              <View key={item.topic} style={styles.card}>
+                <Text style={styles.folderTag}>{item.folder}</Text>
+                <Text style={styles.cardTitle}>{item.topic}</Text>
+                <Text style={styles.cardSummary}>{item.summary}</Text>
+              </View>
             ))}
 
             {items.length > 0 && (
-              <Button title="Start Self-Test" onPress={startSelfTest} disabled={loading} />
+              <AppButton title="Start Self-Test" onPress={startSelfTest} disabled={loading} style={styles.testButton} />
             )}
-            {loading && <ActivityIndicator size="large" />}
+            {loading && <ActivityIndicator size="large" color={colors.accent} style={styles.loader} />}
           </ScrollView>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
   if (stage === 'quiz' && quiz.length > 0) {
     const current = quiz[quizIndex];
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Button title="← Exit Test" onPress={backToMenu} />
-            <ThemedText type="small">
+            <AppButton title="← Exit Test" onPress={backToMenu} variant="outline" style={styles.backButton} />
+            <Text style={styles.progressText}>
               Question {quizIndex + 1} of {quiz.length} — {current.topic}
-            </ThemedText>
-            <ThemedText type="defaultSemiBold">{current.question}</ThemedText>
+            </Text>
+            <Text style={styles.questionText}>{current.question}</Text>
 
             <TextInput
               style={styles.answerInput}
               placeholder="Type your answer here..."
-              placeholderTextColor="#888"
+              placeholderTextColor={colors.textMuted}
               value={userAnswer}
               onChangeText={setUserAnswer}
               multiline
             />
 
             {!showAnswer && (
-              <Button title="Show Model Answer" onPress={() => setShowAnswer(true)} />
+              <AppButton title="Show Model Answer" onPress={() => setShowAnswer(true)} />
             )}
 
             {showAnswer && (
-              <ThemedView style={styles.card}>
-                <ThemedText type="defaultSemiBold">Model Answer:</ThemedText>
-                <ThemedText>{current.answer}</ThemedText>
-                <ThemedView style={styles.buttonRow}>
-                  <Button title="Hard" color="red" onPress={() => submitReview(current.topic, 'hard')} />
-                  <Button title="Easy" color="green" onPress={() => submitReview(current.topic, 'easy')} />
-                </ThemedView>
-              </ThemedView>
+              <View style={styles.card}>
+                <Text style={styles.folderTag}>Model Answer</Text>
+                <Text style={styles.cardSummary}>{current.answer}</Text>
+                <View style={styles.buttonRow}>
+                  <AppButton title="Hard" variant="hard" onPress={() => submitReview(current.topic, 'hard')} style={styles.halfButton} />
+                  <AppButton title="Easy" variant="easy" onPress={() => submitReview(current.topic, 'easy')} style={styles.halfButton} />
+                </View>
+              </View>
             )}
           </ScrollView>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
@@ -202,20 +204,65 @@ export default function ReviseScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: colors.background },
   safeArea: { flex: 1 },
-  scrollContent: { padding: 20, gap: 12, paddingBottom: 60 },
-  menuButton: { marginBottom: 8 },
-  card: { padding: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, gap: 8, marginBottom: 8 },
-  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  answerInput: {
+  scrollContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl * 2 },
+  eyebrow: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 2 },
+  title: { color: colors.text, fontSize: 24, fontWeight: '800', marginBottom: spacing.sm },
+  menuButton: { marginBottom: spacing.sm },
+  backButton: { alignSelf: 'flex-start', marginBottom: spacing.sm },
+  loader: { marginTop: spacing.md },
+  emptyText: { color: colors.textMuted, fontSize: 15 },
+  folderCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    minHeight: 80,
-    color: '#000',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    padding: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  folderCardText: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  folderOpenButton: { paddingHorizontal: spacing.md },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  folderTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.tag,
+    color: colors.accentText,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    textTransform: 'uppercase',
+  },
+  cardTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  cardSummary: { color: colors.textMuted, fontSize: 14, lineHeight: 21 },
+  testButton: { marginTop: spacing.sm },
+  progressText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  questionText: { color: colors.text, fontSize: 18, fontWeight: '700', lineHeight: 25, marginBottom: spacing.sm },
+  answerInput: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    minHeight: 100,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    fontSize: 15,
     textAlignVertical: 'top',
   },
+  buttonRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  halfButton: { flex: 1 },
 });
