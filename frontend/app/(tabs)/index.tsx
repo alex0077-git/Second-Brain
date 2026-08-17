@@ -20,7 +20,7 @@ export default function HomeScreen() {
     setLoading(true);
     setExplanation('');
     try {
-        const response = await fetch(`${API_URL}/learn`, {
+      const response = await fetch(`${API_URL}/learn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, folder, language }),
@@ -43,50 +43,52 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title">Learn</ThemedText>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <ThemedText type="title">Learn</ThemedText>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Topic (e.g. decorators)"
-          value={topic}
-          onChangeText={setTopic}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Folder (e.g. Python, DSA)"
-          value={folder}
-          onChangeText={setFolder}
-        />
-
-        <ThemedView style={styles.langRow}>
-          <Button
-            title="English"
-            color={language === 'english' ? 'blue' : 'gray'}
-            onPress={() => setLanguage('english')}
+          <TextInput
+            style={styles.input}
+            placeholder="Topic (e.g. decorators)"
+            placeholderTextColor="#888"
+            value={topic}
+            onChangeText={setTopic}
           />
-          <Button
-            title="മലയാളം"
-            color={language === 'ml' ? 'blue' : 'gray'}
-            onPress={() => setLanguage('ml')}
+
+          <TextInput
+            style={styles.input}
+            placeholder="Folder (e.g. Python, DSA)"
+            placeholderTextColor="#888"
+            value={folder}
+            onChangeText={setFolder}
           />
-        </ThemedView>
 
-        <Button title="Learn" onPress={handleLearn} disabled={loading} />
-
-        {loading && <ActivityIndicator size="large" />}
-
-        {explanation !== '' && !loading && (
-          <ThemedView style={styles.resultBox}>
-            <ScrollView style={styles.scroll}>
-              <ThemedText>{explanation}</ThemedText>
-            </ScrollView>
-            <Button title="Learn another topic" onPress={handleReset} />
-            <ThemedText type="small">
-              Saved to "{folder}". Go to the Revise tab anytime to review it.
-            </ThemedText>
+          <ThemedView style={styles.langRow}>
+            <Button
+              title="English"
+              color={language === 'english' ? 'blue' : 'gray'}
+              onPress={() => setLanguage('english')}
+            />
+            <Button
+              title="മലയാളം"
+              color={language === 'ml' ? 'blue' : 'gray'}
+              onPress={() => setLanguage('ml')}
+            />
           </ThemedView>
-        )}
+
+          <Button title="Learn" onPress={handleLearn} disabled={loading} />
+
+          {loading && <ActivityIndicator size="large" />}
+
+          {explanation !== '' && !loading && (
+            <ThemedView style={styles.resultBox}>
+              <ThemedText>{explanation}</ThemedText>
+              <Button title="Learn another topic" onPress={handleReset} />
+              <ThemedText type="small">
+                Saved to "{folder}". Go to the Revise tab anytime to review it.
+              </ThemedText>
+            </ThemedView>
+          )}
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -94,9 +96,16 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1, padding: 20, gap: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12 },
+  safeArea: { flex: 1 },
+  scrollContent: { padding: 20, gap: 12 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    color: '#000',
+    backgroundColor: '#fff',
+  },
   langRow: { flexDirection: 'row', gap: 8 },
-  resultBox: { flex: 1, gap: 8 },
-  scroll: { flex: 1, borderWidth: 1, borderColor: '#eee', borderRadius: 8, padding: 12 },
+  resultBox: { gap: 8, paddingBottom: 40 },
 });
