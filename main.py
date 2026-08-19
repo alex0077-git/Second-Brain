@@ -38,6 +38,10 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+    try:
+        cursor.execute("ALTER TABLE notes ADD COLUMN short_summary TEXT")
+    except sqlite3.OperationalError:
+        pass
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS review_schedule (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,15 +55,6 @@ def init_db():
     conn.close()
 
 init_db()
-
-
-def make_summary(explanation: str) -> str:
-    clean = explanation.split("---")[0].strip()
-    if len(clean) <= 150:
-        return clean
-    truncated = clean[:150]
-    last_space = truncated.rfind(" ")
-    return truncated[:last_space] + "..."
 
 
 class TopicRequest(BaseModel):
@@ -143,6 +138,16 @@ Answer: ..."""
 
     explanation = f"{main_content}\n\n---\n\n**Interview Question:**\n{interview_content}"
 
+    # Call 3 — crisp one-line summary for revision (NOT a truncation of the main content)
+    summary_prompt = f"""{lang_instruction}. In exactly ONE short sentence (max 20 words), state the core idea of "{request.topic}" in the simplest possible way — as if reminding someone who already learned it, not explaining it from scratch. No preamble, just the sentence."""
+
+    summary_response = client.chat.completions.create(
+        model="openai/gpt-oss-120b",
+        messages=[{"role": "user", "content": summary_prompt}],
+        max_tokens=400,
+    )
+    short_summary = summary_response.choices[0].message.content.strip().replace("**", "")
+
     notes_collection.upsert(
         documents=[f"{request.topic}: {explanation[:500]}"],
         ids=[note_id],
@@ -155,14 +160,15 @@ Answer: ..."""
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
     cursor.execute("""
-        INSERT INTO notes (topic, folder, language, explanation, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO notes (topic, folder, language, explanation, created_at, short_summary)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(topic) DO UPDATE SET
             folder = excluded.folder,
             language = excluded.language,
             explanation = excluded.explanation,
-            created_at = excluded.created_at
-    """, (request.topic.lower(), folder_clean, request.language, explanation, now))
+            created_at = excluded.created_at,
+            short_summary = excluded.short_summary
+    """, (request.topic.lower(), folder_clean, request.language, explanation, now, short_summary))
 
     cursor.execute("""
         INSERT INTO review_schedule (topic, next_review_date, interval_days, last_reviewed)
@@ -236,10 +242,10 @@ def get_today_learned():
     conn = sqlite3.connect("reviews.db")
     cursor = conn.cursor()
     today = datetime.now().strftime("%Y-%m-%d")
-    cursor.execute("SELECT topic, folder, explanation FROM notes WHERE created_at = ?", (today,))
+    cursor.execute("SELECT topic, folder, short_summary FROM notes WHERE created_at = ?", (today,))
     rows = cursor.fetchall()
     conn.close()
-    return {"topics": [{"topic": r[0], "folder": r[1], "summary": make_summary(r[2])} for r in rows]}
+    return {"topics": [{"topic": r[0], "folder": r[1], "summary": r[2] or "No summary yet — revisit this topic to generate one."} for r in rows]}
 
 
 @app.get("/review/all")
@@ -260,10 +266,10 @@ def get_all_for_review():
 def get_folder_topics(folder: str):
     conn = sqlite3.connect("reviews.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT topic, folder, explanation FROM notes WHERE folder = ? ORDER BY topic", (folder,))
+    cursor.execute("SELECT topic, folder, short_summary FROM notes WHERE folder = ? ORDER BY topic", (folder,))
     rows = cursor.fetchall()
     conn.close()
-    return {"topics": [{"topic": r[0], "folder": r[1], "summary": make_summary(r[2])} for r in rows]}
+    return {"topics": [{"topic": r[0], "folder": r[1], "summary": r[2] or "No summary yet — revisit this topic to generate one."} for r in rows]}
 
 
 @app.post("/review/submit")
@@ -330,3 +336,38 @@ ANSWER: <answer text>"""
 
     conn.close()
     return {"quiz": quiz_items}
+
+@app.post("/admin/backfill-summaries")
+def backfill_summaries():
+    conn = sqlite3.connect("reviews.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT topic, explanation, language FROM notes WHERE short_summary IS NULL OR short_summary = ''")
+    rows = cursor.fetchall()
+
+    updated = []
+    for topic, explanation, language in rows:
+        lang_instruction = "Respond entirely in Malayalam (using Malayalam script)" if language == "ml" else "Respond in English"
+        main_part = explanation.split("---")[0][:1000]
+
+        summary_prompt = f"""{lang_instruction}. Based on this explanation of "{topic}":
+
+{main_part}
+
+In exactly ONE short sentence (max 20 words), state the core idea of "{topic}" in the simplest possible way — as if reminding someone who already learned it. No preamble, just the sentence."""
+
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=[{"role": "user", "content": summary_prompt}],
+            max_tokens=400,
+        )
+        print(f"DEBUG finish_reason: {response.choices[0].finish_reason}")
+        print(f"DEBUG raw_content: '{response.choices[0].message.content}'")
+        short_summary = response.choices[0].message.content.strip().replace("**", "")
+        print(f"DEBUG topic={topic} summary='{short_summary}'")
+
+        cursor.execute("UPDATE notes SET short_summary = ? WHERE topic = ?", (short_summary, topic))
+        updated.append(topic)
+
+    conn.commit()
+    conn.close()
+    return {"updated_topics": updated, "count": len(updated)}
