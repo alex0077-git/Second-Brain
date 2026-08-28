@@ -100,21 +100,23 @@ def learn_topic(request: TopicRequest):
         else "Each example should be 100-150 words."
     )
 
-    main_prompt = f"""You are an expert teacher explaining the SOFTWARE PROGRAMMING concept "{request.topic}" to a developer preparing for interviews in Kerala, India.
+    main_prompt = f"""You are an expert teacher explaining the SOFTWARE PROGRAMMING/TECHNOLOGY concept "{request.topic}" to a developer preparing for interviews in Kerala, India.
 
-CRITICAL RULE: The topic you must explain is EXACTLY "{request.topic}". Ignore any other topic mentioned in the context below — the context is only background, and if it discusses a DIFFERENT concept than "{request.topic}", you must NOT explain that different concept. Your entire response must be about "{request.topic}" only.
+    CRITICAL RULE: The topic you must explain is EXACTLY "{request.topic}". Ignore any other topic mentioned in the context below — the context is only background, and if it discusses a DIFFERENT concept than "{request.topic}", you must NOT explain that different concept. Your entire response must be about "{request.topic}" only.
 
-Background context from the student's past learning (use ONLY if it is actually about "{request.topic}"; otherwise ignore it completely):
-{context_text}
+    Background context from the student's past learning (use ONLY if it is actually about "{request.topic}"; otherwise ignore it completely):
+    {context_text}
 
-{lang_instruction}.
+    {lang_instruction}.
 
-Structure your response about "{request.topic}" as follows:
-1. Start with ONE memorable real-world analogy (2-3 sentences) that makes the core idea click immediately — like explaining an API using a restaurant waiter who takes your order to the kitchen and brings back the food, so you never deal with the kitchen directly. Pick an analogy from everyday life in Kerala/India that fits "{request.topic}".
-2. A clear technical explanation (1-2 paragraphs) of what "{request.topic}" is, why it exists, and how it works internally.
-3. Exactly 2 detailed real-world examples, each using a DIFFERENT company/product type. {example_length_note} Each example must describe a specific scenario, include a short code snippet, and explain WHY this approach was chosen.
+    Structure your response about "{request.topic}" as follows:
+    1. Start with ONE memorable real-world analogy (2-3 sentences) that makes the core idea click immediately — like explaining an API using a restaurant waiter who takes your order to the kitchen and brings back the food, so you never deal with the kitchen directly. Pick an analogy from everyday life in Kerala/India that fits "{request.topic}".
+    2. A clear technical explanation (1-2 paragraphs) of what "{request.topic}" is, why it exists, and how it works internally.
+    3. Exactly 2 detailed real-world examples, each using a DIFFERENT company/product type. {example_length_note} Each example must describe a specific scenario and explain WHY this approach was chosen.
 
-Do NOT include any interview question in this response — that will be asked separately."""
+    IMPORTANT: Only include a short code snippet in an example if "{request.topic}" is a code-level concept (like a language feature, data structure, or syntax construct) where seeing actual code genuinely helps understanding. If "{request.topic}" is a process, workflow, architecture pattern, or tool/pipeline concept (like CI/CD, deployment pipelines, version control workflows, system design), do NOT include any code or config file syntax (no YAML, no shell commands) — explain it purely in plain language using the real-world scenario, focusing on WHAT happens at each step and WHY, not exact syntax.
+
+    Do NOT include any interview question in this response — that will be asked separately."""
     main_max_tok = 5000 if request.language == "ml" else 3000
 
     main_response = client.chat.completions.create(
